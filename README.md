@@ -1,4 +1,4 @@
-## gulp-nks-rewrite-meta
+## gulp-maschine-id3
 
 Gulp plugin for adding maschine-aware metadata chunk to WAVE file.
 
