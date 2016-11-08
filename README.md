@@ -122,4 +122,4 @@ The callback function to support non-blocking data provider.
 
 ## Notes
  - only support '.wav' file.
- - this plugin do not overwriting metadata of ID3 chunk if already exists. it's replaced by new chunk, so you must specify all necessary data.
+ - this plugin do not rewriting metadata of ID3 chunk if already exists. it's replaced by new chunk, so you must specify all necessary data.
