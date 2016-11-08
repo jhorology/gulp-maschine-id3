@@ -38,14 +38,14 @@ gulp.task 'hoge', ->
    .pipe gulp.dest 'dist'
 ```
 
-list id of all chunks included in source file.
+list ids of all chunks in source file.
 ```coffeescript
 id3 = require 'gulp-maschine-id3'
 gulp.task 'hoge', ->
   gulp.src ['src/**/*.wav'], read: true
     .pipe id3 (file, chunks) ->
       console.info (chunk.id for chunk in chunks)
-      # if return null or undefined, source file will not be changed.
+      # if return null or undefined, file will not be changed.
       undefined
   .pipe gulp.dest 'dist'
 ```
@@ -92,7 +92,7 @@ examle:
 ##### data.syncFilename [optional] default: true
 Type: `bool`
 
-use data.name as filenam.
+use data.name as filename.
 
 ##### data.removeUnnecessaryChunks [optional] default: true
 Type: `bool`
@@ -119,3 +119,7 @@ properties of element
 Type: `function(err, data)`
 
 The callback function to support non-blocking data provider.
+
+## Notes
+ - only support '.wav' file.
+ - this plugin do not overwriting metadata of ID3 chunk if already exists. it's replaced by new chunk, so you must specify all necessary data.
