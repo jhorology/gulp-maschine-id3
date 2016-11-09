@@ -78,13 +78,13 @@ The length of array should be 1 or 2.
 ##### data.types [optional]
 Type: 2 dimensional `Array` of `String`
 
-The length of inner array should be 1 or 2
+The length of inner array should be 1 - 3
 
 examle:
 ```coffeescript
   [
-    ['Bass', 'Dirty Bass']
-    ['Bass', 'Ugly Bass']
+    ['Bass', 'Synth Bass', 'Ugly']
+    ['Bass', 'Synth Bass', 'Dirty']
   ]
 ```
 

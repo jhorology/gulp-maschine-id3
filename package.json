@@ -1,6 +1,6 @@
 {
   "name": "gulp-maschine-id3",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Gulp plugin for adding maschine-aware metadata chunk to WAVE file.",
   "author": {
     "name": "jhorology",

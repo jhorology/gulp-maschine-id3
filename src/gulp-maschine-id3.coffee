@@ -214,6 +214,9 @@ _types = (types) ->
   for t in types
     if t and t.length > 1 and t[0] and t[1]
       list.push "\\:#{t[0]}\\:#{t[1]}"
+  for t in types
+    if t and t.length > 2 and t[0] and t[1] and t[2]
+      list.push "\\:#{t[0]}\\:#{t[1]}\\:#{t[2]}"
   _.uniq list
 
 _validate = (data) ->
@@ -249,7 +252,7 @@ _validate = (data) ->
           assert.ok _.isArray value, "data.types should be 2 dimensional Array of String. #{value}"
           for v in value
             assert.ok _.isArray v, "data.types should be Array of String. #{value}"
-            assert.ok v.length > 0 and v.length <= 2, "data.types lenth of inner array should be 1 or 2. #{value}"
+            assert.ok v.length > 0 and v.length <= 3, "data.types lenth of inner array should be 1 - 3. #{value}"
             for i in v
               assert.ok _.isString i, "data.types should be 2 dimensional Array of String. #{value}"
       when 'modes'
