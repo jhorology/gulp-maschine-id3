@@ -33,16 +33,16 @@ gulp.task 'hoge', ->
   gulp.src ['src/**/*.wav']
     .pipe id3 (file, chunks, done) ->
       # create data in non-blocking function
-      nonblockingfunction metadata, (err, data) ->
+      non_blockingfunction files, chunks, (err, data) ->
       done err, data
    .pipe gulp.dest 'dist'
 ```
 
-list ids of all chunks in source file.
+list all chunk ids included in source file.
 ```coffeescript
 id3 = require 'gulp-maschine-id3'
 gulp.task 'hoge', ->
-  gulp.src ['src/**/*.wav'], read: true
+  gulp.src ['src/**/*.wav']
     .pipe id3 (file, chunks) ->
       console.info (chunk.id for chunk in chunks)
       # if return null or undefined, file will not be changed.
