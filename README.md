@@ -47,7 +47,6 @@ gulp.task 'hoge', ->
       console.info (chunk.id for chunk in chunks)
       # if return null or undefined, file will not be changed.
       undefined
-  .pipe gulp.dest 'dist'
 ```
 
 ## API
