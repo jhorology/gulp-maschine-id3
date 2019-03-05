@@ -282,6 +282,7 @@ _validate = (data) ->
       'comment'
       'deviceType'
       'bankchain'
+      'tempo'
       'types'
       'modes'
       'syncFilename'
@@ -306,6 +307,9 @@ _validate = (data) ->
         if value
           assert.ok _.isString value, "data.deviceType should be String. #{value}"
           assert.ok value is 'LOOP' or value is 'ONESHOT', "data.deviceType should be 'LOOP' or 'ONESHOT'. #{value}"
+      when 'tempo'
+        if  value
+          assert.ok _.isNumber value, "data.tempo should be number. #{value}"
       when 'types'
         if  value
           assert.ok _.isArray value, "data.types should be 2 dimensional Array of String. #{value}"
