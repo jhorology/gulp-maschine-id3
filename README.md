@@ -21,9 +21,11 @@ gulp.task 'hoge', ->
       author: 'Hehehe'
       comment: 'uniuni'
       bankchain: ['Fugafuga', 'Fugafuga 1.1 Library']
+      deviceType: 'LOOP'
       types: [
-         ['Bass', 'Synth Bass']
-       ]
+        ['Bass', 'Synth Bass']
+      ]
+      modes: ['Additive', 'Analog']
     .pipe gulp.dest "dist"
 ```
 using the non-blocking function to provide data.
@@ -70,6 +72,11 @@ Type: `String`
 ##### data.comment [optional]
 Type: `String`
 
+##### data.deviceType [optional]
+Type: `String`
+
+'LOOP' or 'ONESHOT', default 'ONESHOT'
+
 ##### data.bankchain [optional]
 Type: `Array` of `String`
 
@@ -86,6 +93,14 @@ examle:
     ['Bass', 'Synth Bass', 'Ugly']
     ['Bass', 'Synth Bass', 'Dirty']
   ]
+```
+
+##### data.modes [optional]
+Type: `Array` of `String`
+
+examle:
+```coffeescript
+  ['Additive', 'Analog']
 ```
 
 ##### data.syncFilename [optional] default: true
@@ -121,5 +136,6 @@ The callback function to support non-blocking data provider.
 
 ## Notes
  - only support '.wav' file.
- - this plugin do not rewrite metadata of ID3 chunk if already exists. it's replaced by new chunk, so you must specify all necessary data.
+ - this plugin replace the exsiting ID3 chunk.
  - [here](https://github.com/jhorology/loooops) is an example project for this plugin.
+ - v0.1.0 was tested only with Komplete Kontrol v2.1 and Maschine v2.8.0.

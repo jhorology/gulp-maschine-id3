@@ -1,53 +1,70 @@
-# Gulp plugin for adding maschine metadata to wav file
-#
-# - API
-#  - id3(data)
-#   - data
-#     object or function to provide data
-#   - data.name          String Optional default: source filename
-#   - data.author        String
-#   - data.vendor        String
-#   - data.comment       String
-#   - data.bankchain     Array of String
-#   - data.types         2 dimensional Array of String
-#   - data.modes         Array of String (currently unsupported)
-#   - data.syncFilename  bool - use data.name as filenam. default: true
-#   - data.removeUnnecessaryChunks bool - remove all chunks except 'fmt ' or 'data' chunk. default: true
-#   - function(file, chunks[,callback])
-#     function to provide data
-#     - file instance of vinyl file
-#     - chunks Array of object
-#        RIFF chunks of source file
-#        element properties
-#          - id    String chunk id
-#          - data  Buffer contents of chunk
-#     - callback function(err, data)
-#       callback function to support non-blocking call.
-#
-# - Usage
-#     id3 = require 'gulp-maschine-id3'
-#     gulp.task 'hoge', ->
-#       gulp.src ["src/**/*.wav"]
-#         .pipe id3 (file, chunks) ->
-#           name: "Hogehoge"
-#           vendor: "Hahaha"
-#           author: "Hehehe"
-#           comment: "uniuni"
-#           bankchain: ['Fugafuga', 'Fugafuga 1.1 Library']
-#           types: [
-#             ['Bass', 'Synth Bass']
-#           ]
-#         .pipe gulp.dest "dist"
-#
+###
+Gulp plugin for adding maschine metadata to wav file
+
+- API
+ - id3(data)
+  - data
+    object or function to provide data
+  - data.name          String Optional default: source filename
+  - data.author        String
+  - data.vendor        String
+  - data.comment       String
+  - data.deviceType    String 'LOOP' or 'ONESHOT'
+  - data.bankchain     Array of String
+  - data.types         2 dimensional Array of String
+  - data.modes         Array of String
+  - data.syncFilename  bool - use data.name as filenam. default: true
+  - data.removeUnnecessaryChunks bool - remove all chunks except 'fmt ' or 'data' chunk. default: true
+  - function(file, chunks[,callback])
+    function to provide data
+    - file instance of vinyl file
+    - chunks Array of object
+       RIFF chunks of source file
+       element properties
+         - id    String chunk id
+         - data  Buffer contents of chunk
+    - callback function(err, data)
+      callback function to support non-blocking call.
+
+- Usage
+    id3 = require 'gulp-maschine-id3'
+    gulp.task 'hoge', ->
+      gulp.src ["*.wav"]
+        .pipe id3 (file, chunks) ->
+          name: "Hogehoge"
+          vendor: "Hahaha"
+          author: "Hehehe"
+          bankchain: ['Fugafuga', 'Fugafuga 1.1 Library']
+          comment: "uniuni"
+          deviceType: 'LOOP'
+          types: [
+            ['Bass', 'Synth Bass']
+          ]
+          modes: ['Additive', 'Analog']
+        .pipe gulp.dest "dist"
+###
 assert       = require 'assert'
 path         = require 'path'
 through      = require 'through2'
 gutil        = require 'gulp-util'
 _            = require 'underscore'
+msgpack      = require 'msgpack-lite'
 riffReader   = require 'riff-reader'
 riffBuilder  = require './riff-builder'
-
 PLUGIN_NAME  = 'maschine-id3'
+
+DEFAULT_NKS =
+  __ni_internal:
+    source: 'other'
+  author: ''
+  bankchain: ''
+  comment: '',
+  deviceType: 'ONESHOT',
+  modes: []
+  name: ''
+  tempo: 0,
+  types: []
+  vendor: ''
 
 module.exports = (data) ->
   through.obj (file, enc, cb) ->
@@ -105,8 +122,8 @@ _parseSourceWavChunks = (file) ->
       id: id
       data: data
   ids = chunks.map (chunk) -> chunk.id
-  assert.ok ('fmt ' in ids), "[fmt ] chunk is not contained in file."
-  assert.ok ('data' in ids), "[data] chunk is not contained in file."
+  assert.ok ('fmt ' in ids), '[fmt ] chunk is not contained in file.'
+  assert.ok ('data' in ids), '[data] chunk is not contained in file.'
   file.chunks = chunks
 
 # replace or append ID3 chunk to file
@@ -118,7 +135,7 @@ _id3 = (file, data) ->
   extname = path.extname file.path
   basename = path.basename file.path, extname
   dirname = path.dirname file.path
-  # default value
+  # default options
   data = _.defaults data,
     name: basename
     syncFilename: on
@@ -145,25 +162,28 @@ _id3 = (file, data) ->
 # @wreturn Buffer - contents of ID3 chunk
 # ---------------------------------
 _build_id3_chunk = (data) ->
-  geobFrame = _build_geob_frame data
-  header = new BufferBuilder()
+  nksFrame = _build_nks_frame data
+  nisoundFrame = _build_nisound_frame data
+  id3Header = new BufferBuilder()
     .push 'ID3'            # magic
-    .push [0x04,0x00]      # id3 version 2.4.0
+    .push [0x04, 0x00]     # id3 version 4 -> 2.4.0
     .push 0x00             # flags
-    .pushSyncsafeInt geobFrame.length + 1024  # size
+    # size id3header + nksFrame + nisoundFrame + padding 1024
+    .pushSyncsafeInt nksFrame.length + nisoundFrame.length + 1024
   # return buffer
   Buffer.concat [
-    header.buf             # ID3v2 header 10 byte
-    geobFrame              # GEOB frame
-    Buffer.alloc 1024, 0   # end-mark 4 byte  + reserve area
+    id3Header.buf          # ID3v2 header 10 byte
+    nisoundFrame           # GEOB frame
+    nksFrame               # GEOB frame
+    Buffer.alloc 1024, 0   # padding 1024byte
   ]
 
-# build ID3 GEOB frame
+# build ID3 nisound GEOB frame
 #
 # @data    Object - metadata
 # @wreturn Buffer - contents of GEOB frame
 # ---------------------------------
-_build_geob_frame = (data) ->
+_build_nisound_frame = (data) ->
   contents = new BufferBuilder()
     # unknown, It seems all expansions sample are same.
     .pushHex '000000'
@@ -179,44 +199,78 @@ _build_geob_frame = (data) ->
     # comment
     .pushUcs2String data.comment
     # unknown, It seems all expansions sample are same.
-    .pushHex '00000000ffffffffffffffff000000000000000000000000000000000000000001000000'
+    .pushHex '00000000ffffffffffffffff00000000000000000000000000000000'
+    # ??
+    .pushUInt32LE if data.deviceType is 'LOOP' then 8 else 4
+    # .pushUInt32LE 0
+    # unknown
+    .pushHex '01000000'
     # bankchain
     .pushUcs2StringArray data.bankchain
     # types (category)
-    .pushUcs2StringArray _types data.types
+    .pushUcs2StringArray _modesAndTypes data.modes, data.types
     # maybe modes ?
     # .pushUcs2StringArray data.modes
     .pushHex '00000000'
     # properties, It seems all expansions sample are same.
     .pushKeyValuePairs [
        ['color',           '0']
-       ['devicetypeflags', '0']
+       ['devicetypeflags', if data.deviceType is 'LOOP' then '8' else '4']
        ['soundtype',       '0']
        ['tempo',           '0']
-       ['verl',            '1.7.13']
-       ['verm',            '1.7.13']
+       ['verl',            '1.7.14']
+       ['verm',            '1.7.14']
        ['visib',           '0']
     ]
    # header
-  header = new BufferBuilder()
+  frameHeader = new BufferBuilder()
     .push 'GEOB'                          # frame Id
     .pushSyncsafeInt contents.buf.length  # data size
     .push [0x00, 0x00]                    # flags
   # return buffer
-  Buffer.concat [header.buf, contents.buf]
+  Buffer.concat [frameHeader.buf, contents.buf]
+
+# build ID3 nisound GEOB frame
+#
+# @data    Object - metadata
+# @wreturn Buffer - contents of GEOB frame
+# ---------------------------------
+_build_nks_frame = (data) ->
+  nks = Object.assign {}, DEFAULT_NKS
+  dataKeys = Object.keys data
+  (Object.keys nks).forEach (key) ->
+    if dataKeys.includes key
+      nks[key] = data[key]
+
+  nksHeader = new BufferBuilder()
+    .pushHex '000000'
+    .push 'com.native-instruments.nks.soundinfo\u0000'
+
+  content = msgpack.encode nks
+   # header
+  frameHeader = new BufferBuilder()
+    .push 'GEOB'
+    # size of frame contents
+    .pushSyncsafeInt nksHeader.buf.length + content.length
+    .push [0x00, 0x00]                    # flags
+  # return buffer
+  Buffer.concat [frameHeader.buf, nksHeader.buf, content]
 
 
-_types = (types) ->
+_modesAndTypes = (modes, types) ->
   list = []
-  for t in types
-    if t and t.length and t[0]
-      list.push "\\:#{t[0]}"
-  for t in types
-    if t and t.length > 1 and t[0] and t[1]
-      list.push "\\:#{t[0]}\\:#{t[1]}"
-  for t in types
-    if t and t.length > 2 and t[0] and t[1] and t[2]
-      list.push "\\:#{t[0]}\\:#{t[1]}\\:#{t[2]}"
+  if modes
+    list.push "\\.#{mode}" for mode in modes
+  if types
+    for t in types
+      if t and t.length and t[0]
+        list.push "\\:#{t[0]}"
+    for t in types
+      if t and t.length > 1 and t[0] and t[1]
+        list.push "\\:#{t[0]}\\:#{t[1]}"
+    for t in types
+      if t and t.length > 2 and t[0] and t[1] and t[2]
+        list.push "\\:#{t[0]}\\:#{t[1]}\\:#{t[2]}"
   _.uniq list
 
 _validate = (data) ->
@@ -226,6 +280,7 @@ _validate = (data) ->
       'author'
       'vendor'
       'comment'
+      'deviceType'
       'bankchain'
       'types'
       'modes'
@@ -247,6 +302,10 @@ _validate = (data) ->
           assert.ok _.isArray value, "data.bankchain should be Array of String. #{value}"
           for v in value
             assert.ok _.isString v, "data.bankchain should be Array of String. #{value}"
+      when 'deviceType'
+        if value
+          assert.ok _.isString value, "data.deviceType should be String. #{value}"
+          assert.ok value is 'LOOP' or value is 'ONESHOT', "data.deviceType should be 'LOOP' or 'ONESHOT'. #{value}"
       when 'types'
         if  value
           assert.ok _.isArray value, "data.types should be 2 dimensional Array of String. #{value}"
@@ -256,9 +315,8 @@ _validate = (data) ->
             for i in v
               assert.ok _.isString i, "data.types should be 2 dimensional Array of String. #{value}"
       when 'modes'
-        # optional (currently unused)
         if  value
-          assert.ok _.isArray value, "data.modess should be Array of String. #{value}"
+          assert.ok _.isArray value, "data.modes should be Array of String. #{value}"
           for v in value
             assert.ok _.isString v, "data.modes should be Array of String. #{value}"
 
