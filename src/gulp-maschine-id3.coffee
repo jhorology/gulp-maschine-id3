@@ -201,7 +201,7 @@ _build_nisound_frame = (data) ->
     # unknown, It seems all expansions sample are same.
     .pushHex '00000000ffffffffffffffff00000000000000000000000000000000'
     # ??
-    .pushUInt32LE if data.deviceType is 'LOOP' then 8 else 4
+    .pushUInt32LE if data.deviceType is 'LOOP' then 4 else 3
     # .pushUInt32LE 0
     # unknown
     .pushHex '01000000'
